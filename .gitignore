@@ -1,0 +1,15 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Local app bundles and Xcode output
+build/
+*.xcodeproj
+*.xcworkspace
+.DS_Store
+
+# Local tooling and scratch notes
+.local/
+.omp/
+*.swp
+*.log
