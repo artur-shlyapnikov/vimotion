@@ -1,0 +1,4 @@
+# Proof artifacts stay local to the machine that produced them.
+*
+!.gitkeep
+!.gitignore
