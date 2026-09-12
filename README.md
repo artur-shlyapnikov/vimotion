@@ -2,8 +2,8 @@
 
 Vimotion is an experimental macOS menu-bar utility that puts keyboard labels
 over actionable controls in the frontmost window. Press the activation
-shortcut, type a label, and Vimotion activates the matching control without
-requiring a mouse click.
+shortcut and type a label. Vimotion activates the matching control without
+a mouse click.
 
 Vimotion uses an external Cua driver to read the macOS accessibility tree and
 activate controls. It connects to that driver through MCP over stdio. The
@@ -14,11 +14,12 @@ driver is not included in this repository.
 - macOS 14 or later.
 - Swift 6.1 or later. The package declares Swift tools version 6.1.
 - `just` for the documented commands.
-- The package's MCP dependency, `modelcontextprotocol/swift-sdk` 0.12.1.
-- An executable `cua-driver` that accepts the `mcp` subcommand and exposes
-  `health_report`, `list_windows`, `get_window_state`, and `click`.
-- Accessibility permission for both Vimotion and the Cua driver.
-- The full Xcode toolchain for `just test` and `just lint`. Install SwiftLint
+- The package depends on `modelcontextprotocol/swift-sdk` 0.12.1.
+- You need an executable `cua-driver` that accepts the `mcp` subcommand.
+  It exposes `health_report`, `list_windows`, `get_window_state`, and
+  `click`.
+- You need Accessibility permission for both Vimotion and the Cua driver.
+- `just test` and `just lint` need the full Xcode toolchain. Install SwiftLint
   for `just lint` and SwiftFormat for `just format-check` or `just format`.
 
 ### Install the Cua driver
@@ -143,9 +144,9 @@ The Settings window is available from the menu-bar item and through the global
 - Vimotion Accessibility, Cua Accessibility, and the optional Cua Screen
   Recording status.
 
-The activation chord and alphabet are stored in `UserDefaults` and applied to
-the global input gate. The base key may remain `Space` when the activation
-editor has no selected letter.
+Vimotion stores the activation chord and alphabet in `UserDefaults` and
+applies them to the global input gate. The base key may remain `Space`
+when the activation editor has no selected letter.
 
 ## MCP driver integration
 
