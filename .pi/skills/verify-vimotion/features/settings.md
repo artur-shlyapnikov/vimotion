@@ -11,7 +11,7 @@ edits are draft-until-applied; invalid drafts cannot be saved.
 - `settings-chord-preserve` keeps a non-letter base key (e.g. `Space`) across edits:
   the picker cannot select it and `Apply` never rewrites it.
 - `settings-alphabet` toggles hint-alphabet chips; `Save` needs ≥4 distinct keys
-  and shows the `(n/4 keys)` count below the gate.
+  and shows the `(n/4 keys)` count in the `Save` button label while gated.
 - `settings-login` toggles Launch at Login, reading `SMAppService.mainApp` as the
   source of truth (the toggle snaps back on failure).
 - `settings-permissions` shows `Vimotion Accessibility` (`Enable…` prompts),
