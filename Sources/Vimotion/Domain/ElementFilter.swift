@@ -160,6 +160,46 @@ enum ElementFilter {
         return survivors.map(\.target)
     }
 
+    /// Returns the single candidate whose fingerprint matches the original,
+    /// or nil when the match is not unique. Stale-token recovery clicks only
+    /// on a proven unique replacement and stays silent otherwise.
+    static func uniqueFingerprintMatch(
+        in candidates: [HintTarget],
+        original: HintTarget
+    ) -> HintTarget? {
+        let matches = candidates.filter { matchesFingerprint($0, original: original) }
+        guard matches.count == 1 else { return nil }
+        return matches.first
+    }
+
+    private static func matchesFingerprint(_ candidate: HintTarget, original: HintTarget) -> Bool {
+        let originalFingerprint = original.fingerprint
+        let candidateFingerprint = candidate.fingerprint
+
+        guard candidate.role == original.role
+                || candidateFingerprint.normalizedRole == originalFingerprint.normalizedRole else {
+            return false
+        }
+
+        if let label = originalFingerprint.normalizedLabel,
+           !label.isEmpty,
+           candidateFingerprint.normalizedLabel != label {
+            return false
+        }
+
+        let dx = Double(candidateFingerprint.center.x - originalFingerprint.center.x)
+        let dy = Double(candidateFingerprint.center.y - originalFingerprint.center.y)
+        guard (dx * dx + dy * dy).squareRoot() <= 12 else { return false }
+
+        let widthTolerance = max(12, originalFingerprint.size.width * 0.25)
+        let heightTolerance = max(12, originalFingerprint.size.height * 0.25)
+        guard abs(candidateFingerprint.size.width - originalFingerprint.size.width) <= widthTolerance,
+              abs(candidateFingerprint.size.height - originalFingerprint.size.height) <= heightTolerance else {
+            return false
+        }
+        return true
+    }
+
     /// Lowercase, trimmed, internal whitespace collapsed to single spaces.
     private static func normalized(_ value: String) -> String {
         value.lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " ")

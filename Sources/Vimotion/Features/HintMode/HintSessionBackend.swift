@@ -233,10 +233,8 @@ final class HintSessionBackend {
             guard !Task.isCancelled else { return .abortedSilently }
 
             let mainDisplayHeight = CGDisplayBounds(CGMainDisplayID()).height
-            let candidates = ElementFilter
-                .normalize(snapshot, mainDisplayHeight: mainDisplayHeight)
-                .filter { matchesFingerprint($0, original: originalTarget) }
-            guard candidates.count == 1, let uniqueMatch = candidates.first else {
+            let candidates = ElementFilter.normalize(snapshot, mainDisplayHeight: mainDisplayHeight)
+            guard let uniqueMatch = ElementFilter.uniqueFingerprintMatch(in: candidates, original: originalTarget) else {
                 return .abortedSilently
             }
             match = uniqueMatch
@@ -248,34 +246,6 @@ final class HintSessionBackend {
         var replacement = originalTarget
         replacement.token = match.token
         return try await performClick(replacement, allowRecovery: false)
-    }
-
-    private func matchesFingerprint(_ candidate: HintTarget, original: HintTarget) -> Bool {
-        let originalFingerprint = original.fingerprint
-        let candidateFingerprint = candidate.fingerprint
-
-        guard candidate.role == original.role
-                || candidateFingerprint.normalizedRole == originalFingerprint.normalizedRole else {
-            return false
-        }
-
-        if let label = originalFingerprint.normalizedLabel,
-           !label.isEmpty,
-           candidateFingerprint.normalizedLabel != label {
-            return false
-        }
-
-        let dx = Double(candidateFingerprint.center.x - originalFingerprint.center.x)
-        let dy = Double(candidateFingerprint.center.y - originalFingerprint.center.y)
-        guard (dx * dx + dy * dy).squareRoot() <= 12 else { return false }
-
-        let widthTolerance = max(12, originalFingerprint.size.width * 0.25)
-        let heightTolerance = max(12, originalFingerprint.size.height * 0.25)
-        guard abs(candidateFingerprint.size.width - originalFingerprint.size.width) <= widthTolerance,
-              abs(candidateFingerprint.size.height - originalFingerprint.size.height) <= heightTolerance else {
-            return false
-        }
-        return true
     }
 
     // MARK: Error boundary
