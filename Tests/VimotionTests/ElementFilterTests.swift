@@ -270,4 +270,24 @@ final class ElementFilterTests: XCTestCase {
                        HintCodeGenerator.generate(targetCount: 8, alphabet: alphabet).map(\.displayString))
         XCTAssertEqual(assigned.map(\.token), targets.map(\.token))
     }
+
+    // MARK: prepare (deep entry point)
+
+    func testPrepareReturnsCodedTargetsInOneStep() {
+        let snapshot = makeSnapshot(elements: (0..<8).map { i in
+            makeElement(index: i, token: "t\(i)", label: "l\(i)",
+                        x: 120 + CGFloat(i) * 55, y: 140 + CGFloat(i) * 45, width: 50, height: 40)
+        })
+        let alphabet: [PhysicalKey] = [.a, .s, .d, .f]
+        let prepared = ElementFilter.prepare(snapshot, alphabet: alphabet, mainDisplayHeight: mainHeight)
+        let expected = HintCodeGenerator.generate(targetCount: 8, alphabet: alphabet).map(\.displayString)
+        XCTAssertEqual(prepared.map(\.hintCode.displayString), expected)
+        XCTAssertEqual(prepared.map(\.token), filter(snapshot).map(\.token))
+    }
+
+    func testPrepareEmptySnapshotReturnsEmpty() {
+        let prepared = ElementFilter.prepare(
+            makeSnapshot(elements: []), alphabet: [.a, .b, .c, .d], mainDisplayHeight: mainHeight)
+        XCTAssertTrue(prepared.isEmpty)
+    }
 }

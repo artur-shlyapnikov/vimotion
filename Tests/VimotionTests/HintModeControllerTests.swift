@@ -204,7 +204,7 @@ final class HintModeControllerTests: XCTestCase {
         let controller: HintModeController
         let serving: MockCuaServing
         let overlay: OverlayCoordinator
-        let gate: InputGate
+        let input: GlobalInput
     }
 
     private func makeHarness(
@@ -232,15 +232,15 @@ final class HintModeControllerTests: XCTestCase {
             ownPID: ownPID
         )
         let overlay = OverlayCoordinator()
-        let gate = InputGate()
+        let input = GlobalInput { _ in }
         let controller = HintModeController(
             serving: serving,
             resolver: resolver,
             overlay: overlay,
-            gate: gate,
+            input: input,
             settings: makeSettings(alphabet: alphabet)
         )
-        return Harness(controller: controller, serving: serving, overlay: overlay, gate: gate)
+        return Harness(controller: controller, serving: serving, overlay: overlay, input: input)
     }
 
     private func waitUntil(
@@ -291,19 +291,19 @@ final class HintModeControllerTests: XCTestCase {
             windows: [FixtureWindow.make(id: targetWindowID, pid: targetPID)],
             snapshots: [.success(makeSnapshot(elements: elements, pid: targetPID), .zero)]
         )
-        XCTAssertEqual(harness.gate.mode, .activationOnly)
+        XCTAssertFalse(harness.input.isCapturing)
 
         harness.controller.handle(.activateHintMode)
 
         // Gate flips to hint capture immediately (before any await).
-        XCTAssertEqual(harness.gate.mode, .hintCapture)
+        XCTAssertTrue(harness.input.isCapturing)
         if case .loading = harness.controller.state {} else {
             XCTFail("expected loading state right after activation")
         }
 
         let active = await waitUntilActive(harness)
         XCTAssertTrue(active)
-        XCTAssertEqual(harness.gate.mode, .hintCapture)
+        XCTAssertTrue(harness.input.isCapturing)
 
         let session = sessionState(of: harness.controller.state)
         XCTAssertNotNil(session)
@@ -320,7 +320,7 @@ final class HintModeControllerTests: XCTestCase {
         if case .idle = harness.controller.state {} else {
             XCTFail("toggle-cancel from active should reach idle")
         }
-        XCTAssertEqual(harness.gate.mode, .activationOnly)
+        XCTAssertFalse(harness.input.isCapturing)
     }
 
     // MARK: Buffered keys
@@ -351,7 +351,7 @@ final class HintModeControllerTests: XCTestCase {
             "snapshot:\(targetPID):\(targetWindowID)",
             "click:\(targetPID):t0",
         ])
-        XCTAssertEqual(harness.gate.mode, .activationOnly)
+        XCTAssertFalse(harness.input.isCapturing)
     }
 
     func testBufferedBackspaceRemovesLastKey() async {
@@ -393,7 +393,7 @@ final class HintModeControllerTests: XCTestCase {
         if case .idle = harness.controller.state {} else {
             XCTFail("cancel should return to idle immediately")
         }
-        XCTAssertEqual(harness.gate.mode, .activationOnly)
+        XCTAssertFalse(harness.input.isCapturing)
 
         // Let the cancelled snapshot's (never-delivered) result land; it must
         // be discarded silently.
@@ -424,7 +424,7 @@ final class HintModeControllerTests: XCTestCase {
         if case .idle = harness.controller.state {} else {
             XCTFail("expected idle after toggle-cancel")
         }
-        XCTAssertEqual(harness.gate.mode, .activationOnly)
+        XCTAssertFalse(harness.input.isCapturing)
     }
 
     func testFrontmostChangeCancelsSilently() async {
@@ -440,7 +440,7 @@ final class HintModeControllerTests: XCTestCase {
         if case .idle = harness.controller.state {} else {
             XCTFail("expected idle after frontmost change")
         }
-        XCTAssertEqual(harness.gate.mode, .activationOnly)
+        XCTAssertFalse(harness.input.isCapturing)
         XCTAssertNil(hudText(of: harness.overlay))
     }
 
@@ -456,7 +456,7 @@ final class HintModeControllerTests: XCTestCase {
         harness.controller.handle(.activateHintMode)
         let idle = await waitUntilIdle(harness)
         XCTAssertTrue(idle)
-        XCTAssertEqual(harness.gate.mode, .activationOnly)
+        XCTAssertFalse(harness.input.isCapturing)
         XCTAssertEqual(hudText(of: harness.overlay), HintModeController.hudScanTimedOut)
     }
 
@@ -475,7 +475,7 @@ final class HintModeControllerTests: XCTestCase {
 
         let idle = await waitUntilIdle(harness, timeout: 3)
         XCTAssertTrue(idle)
-        XCTAssertEqual(harness.gate.mode, .activationOnly)
+        XCTAssertFalse(harness.input.isCapturing)
         XCTAssertEqual(hudText(of: harness.overlay), HintModeController.hudIdleCancelled)
     }
 
@@ -531,7 +531,7 @@ final class HintModeControllerTests: XCTestCase {
         // Once typing stops, the session times out on the reset schedule.
         let idle = await waitUntilIdle(harness, timeout: 3)
         XCTAssertTrue(idle)
-        XCTAssertEqual(harness.gate.mode, .activationOnly)
+        XCTAssertFalse(harness.input.isCapturing)
     }
 
     // MARK: Empty tree + error mapping
@@ -546,7 +546,7 @@ final class HintModeControllerTests: XCTestCase {
         let idle = await waitUntilIdle(harness)
         XCTAssertTrue(idle)
         XCTAssertEqual(hudText(of: harness.overlay), "No actionable elements")
-        XCTAssertEqual(harness.gate.mode, .activationOnly)
+        XCTAssertFalse(harness.input.isCapturing)
     }
 
     func testTransportFailureShowsDriverUnavailableHUD() async {
@@ -559,7 +559,7 @@ final class HintModeControllerTests: XCTestCase {
         let idle = await waitUntilIdle(harness)
         XCTAssertTrue(idle)
         XCTAssertEqual(hudText(of: harness.overlay), "Cua Driver unavailable")
-        XCTAssertEqual(harness.gate.mode, .activationOnly)
+        XCTAssertFalse(harness.input.isCapturing)
     }
 
     func testAccessibilityDeniedShowsAccessibilityHUD() async {
@@ -599,7 +599,7 @@ final class HintModeControllerTests: XCTestCase {
             "listWindows",                       // existence verification
             "snapshot:99:\(targetWindowID)",     // retry against reported owner
         ])
-        XCTAssertEqual(harness.gate.mode, .activationOnly)
+        XCTAssertFalse(harness.input.isCapturing)
     }
 
     func testOwnerMismatchRetryWithNewOwnerSucceeds() async {

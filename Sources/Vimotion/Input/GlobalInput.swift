@@ -71,10 +71,19 @@ final class GlobalInput {
         eventTap.isRunning
     }
 
-    /// Compatibility bridge for the existing HintModeController seam. The
-    /// controller receives this same engine instance; all input configuration
-    /// and tap lifecycle remain owned by this façade.
-    func withDecisionEngine<Result>(_ body: (InputGate) -> Result) -> Result {
-        body(gate)
+    /// Read-only facade state so callers and tests never touch the decision
+    /// engine or its gate modes directly. Capture lifecycle stays behind
+    /// `beginHintCapture` / `endHintCapture`; these exist only for
+    /// observation.
+    var activationChord: ActivationChord {
+        gate.activationChord
+    }
+
+    var isCapturing: Bool {
+        gate.mode == .hintCapture
+    }
+
+    func acceptsHintKey(_ key: PhysicalKey) -> Bool {
+        gate.configuredHintKeyCodes.contains(key.cgKeyCode)
     }
 }

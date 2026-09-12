@@ -24,13 +24,15 @@ final class HintModeController {
     /// Hint-session idle timeout since last accepted hint key. Test-overridable.
     static var idleTimeout: Duration = .seconds(10)
 
-    // HUD copy is frozen user-visible text.
-    static let hudDriverUnavailable = "Cua Driver unavailable"
-    static let hudAccessibilityRequired = "Cua Accessibility required"
-    static let hudScanTimedOut = "UI scan timed out"
-    static let hudNoActionableElements = "No actionable elements"
-    static let hudTargetChanged = "Target changed"
-    static let hudIdleCancelled = "Idle timeout"
+    // HUD copy is frozen user-visible text. Feature-error strings are owned
+    // by `HintSessionBackendError.hudText`; these forward to that single
+    // source so tests and call sites keep a stable spelling.
+    nonisolated static let hudDriverUnavailable = HintSessionBackendError.driverUnavailable.hudText
+    nonisolated static let hudAccessibilityRequired = HintSessionBackendError.accessibilityRequired.hudText
+    nonisolated static let hudScanTimedOut = HintSessionBackendError.scanTimedOut.hudText
+    nonisolated static let hudNoActionableElements = HintSessionBackendError.noActionableElements.hudText
+    nonisolated static let hudTargetChanged = HintSessionBackendError.targetChanged.hudText
+    nonisolated static let hudIdleCancelled = "Idle timeout"
     // OSSignposter requires StaticString literals.
     private static let spTargetsToOverlay: StaticString = "targets_to_overlay"
     private static let spKeyToClick: StaticString = "key_to_click"
@@ -74,26 +76,6 @@ final class HintModeController {
             ),
             overlay: overlay,
             input: input
-        )
-    }
-
-    /// Compatibility seam for the existing composition root and focused
-    /// tests. Production composition uses the GlobalInput façade directly;
-    /// this overload keeps tests that inspect the synchronous gate behavior
-    /// source-compatible without making that engine the controller API.
-    convenience init(serving: any CuaDriverServing,
-         resolver: WindowTargetResolver,
-         overlay: OverlayCoordinator,
-         gate: InputGate,
-         settings: SettingsStore) {
-        self.init(
-            backend: HintSessionBackend(
-                serving: serving,
-                resolver: resolver,
-                settings: settings
-            ),
-            overlay: overlay,
-            input: GlobalInput(gate: gate) { _ in }
         )
     }
 
@@ -392,20 +374,6 @@ final class HintModeController {
     // MARK: Error mapping
 
     private func hudText(for error: any Error) -> String {
-        guard let backendError = error as? HintSessionBackendError else {
-            return Self.hudDriverUnavailable
-        }
-        switch backendError {
-        case .scanTimedOut:
-            return Self.hudScanTimedOut
-        case .accessibilityRequired:
-            return Self.hudAccessibilityRequired
-        case .targetChanged:
-            return Self.hudTargetChanged
-        case .noActionableElements:
-            return Self.hudNoActionableElements
-        default:
-            return Self.hudDriverUnavailable
-        }
+        (error as? HintSessionBackendError)?.hudText ?? Self.hudDriverUnavailable
     }
 }

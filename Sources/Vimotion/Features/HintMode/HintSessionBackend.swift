@@ -10,14 +10,31 @@ import Foundation
 import os
 
 /// Errors that are meaningful to Hint Mode rather than to the Cua transport.
-/// The controller maps these to the frozen HUD strings without knowing about
-/// the driver's raw error taxonomy.
+/// Each case carries its frozen HUD copy, so the controller never maintains
+/// a parallel error→string table and never learns the driver's raw taxonomy.
 enum HintSessionBackendError: Error, Sendable, Equatable {
     case driverUnavailable
     case accessibilityRequired
     case scanTimedOut
     case targetChanged
     case noActionableElements
+
+    /// Frozen user-visible copy. Single source for the HUD strings the
+    /// controller historically duplicated in its own `hudText(for:)` switch.
+    var hudText: String {
+        switch self {
+        case .driverUnavailable:
+            return "Cua Driver unavailable"
+        case .accessibilityRequired:
+            return "Cua Accessibility required"
+        case .scanTimedOut:
+            return "UI scan timed out"
+        case .targetChanged:
+            return "Target changed"
+        case .noActionableElements:
+            return "No actionable elements"
+        }
+    }
 }
 
 /// Result of a target activation. A stale-token recovery that cannot prove a
@@ -75,18 +92,10 @@ final class HintSessionBackend {
 
             let interval = PerformanceMetrics.signposter.beginInterval(Self.spSnapshotToTargets)
             defer { PerformanceMetrics.signposter.endInterval(Self.spSnapshotToTargets, interval) }
-            let mainDisplayHeight = CGDisplayBounds(CGMainDisplayID()).height
-            let normalized = ElementFilter.normalize(
-                snapshot,
-                mainDisplayHeight: mainDisplayHeight
-            )
-            guard !normalized.isEmpty else {
+            let targets = ElementFilter.prepare(snapshot, alphabet: settings.hintAlphabet)
+            guard !targets.isEmpty else {
                 throw HintSessionBackendError.noActionableElements
             }
-            let targets = HintCodeAssigner.assign(
-                to: normalized,
-                alphabet: settings.hintAlphabet
-            )
             return HintSessionLoad(
                 window: window,
                 snapshotID: snapshot.snapshotID,

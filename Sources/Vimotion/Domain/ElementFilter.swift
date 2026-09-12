@@ -3,9 +3,42 @@ import Foundation
 
 /// CuaWindowSnapshot → [HintTarget] normalization pipeline (§3.9, §3.13):
 /// convert → geometry filter → dedupe (token-exact, then role+label+IoU≥0.97)
-/// → deterministic reading-order sort. Output targets carry placeholder
-/// hintCode == HintCode([]); codes are assigned positionally afterwards.
+/// → deterministic reading-order sort → positional code assignment.
+///
+/// New callers should use `prepare(_:alphabet:mainDisplayHeight:)` (or the
+/// display-height convenience overload). `normalize(_:mainDisplayHeight:)`
+/// remains as the uncoded intermediate for stale-token recovery, which
+/// matches on fingerprints without hint codes.
 enum ElementFilter {
+    /// Deep entry point: snapshot in, fully-coded targets out. Hides the
+    /// coordinate conversion, the normalize-then-assign order, the
+    /// placeholder-code intermediate state, and the alphabet threading.
+    /// Returns an empty array when nothing is actionable; the feature
+    /// backend maps that to `.noActionableElements`.
+    static func prepare(
+        _ snapshot: CuaWindowSnapshot,
+        alphabet: [PhysicalKey],
+        mainDisplayHeight: CGFloat
+    ) -> [HintTarget] {
+        HintCodeAssigner.assign(
+            to: normalize(snapshot, mainDisplayHeight: mainDisplayHeight),
+            alphabet: alphabet
+        )
+    }
+
+    /// Convenience overload that reads the main display height itself so
+    /// feature code does not repeat the `CGDisplayBounds` lookup.
+    static func prepare(
+        _ snapshot: CuaWindowSnapshot,
+        alphabet: [PhysicalKey]
+    ) -> [HintTarget] {
+        prepare(
+            snapshot,
+            alphabet: alphabet,
+            mainDisplayHeight: CGDisplayBounds(CGMainDisplayID()).height
+        )
+    }
+
     static func normalize(_ snapshot: CuaWindowSnapshot, mainDisplayHeight: CGFloat) -> [HintTarget] {
         let windowBounds = snapshot.windowBounds
         let window = GeometryMapper.appKitRect(

@@ -15,26 +15,21 @@ final class GlobalInputTests: XCTestCase {
 
         input.configure(activationChord: chord, alphabet: [.s, .d, .f, .j])
 
-        input.withDecisionEngine { gate in
-            XCTAssertEqual(gate.activationChord, chord)
-            XCTAssertEqual(
-                gate.configuredHintKeyCodes,
-                Set([PhysicalKey.s, .d, .f, .j].map(\.cgKeyCode))
-            )
-        }
+        XCTAssertEqual(input.activationChord, chord)
+        XCTAssertTrue(input.acceptsHintKey(.s))
+        XCTAssertTrue(input.acceptsHintKey(.d))
+        XCTAssertTrue(input.acceptsHintKey(.f))
+        XCTAssertTrue(input.acceptsHintKey(.j))
+        XCTAssertFalse(input.acceptsHintKey(.a))
     }
 
     func testHintCaptureLifecycleControlsTheOwnedEngine() {
         let input = GlobalInput { _ in }
 
         input.beginHintCapture()
-        input.withDecisionEngine { gate in
-            XCTAssertEqual(gate.mode, .hintCapture)
-        }
+        XCTAssertTrue(input.isCapturing)
 
         input.endHintCapture()
-        input.withDecisionEngine { gate in
-            XCTAssertEqual(gate.mode, .activationOnly)
-        }
+        XCTAssertFalse(input.isCapturing)
     }
 }
